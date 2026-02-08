@@ -125,6 +125,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
                 <!-- Preview Area -->
                 <div id="previewArea" class="grid grid-cols-2 md:grid-cols-4 gap-4 hidden"></div>
 
+                <!-- Upload Progress -->
+                <div id="uploadProgress" class="hidden">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-semibold text-gray-700">Uploading...</span>
+                        <span id="progressText" class="text-sm font-semibold text-gray-700">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3">
+                        <div id="progressBar" class="bg-orange-600 h-3 rounded-full" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="uploadError" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg"></div>
+
                 <!-- Auto-Delete Notice -->
                 <div class="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
                     <p class="text-sm text-yellow-800">
@@ -150,6 +163,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
     </div>
 
     <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const uploadError = document.getElementById('uploadError');
+
+        if (uploadForm) {
+            uploadForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                uploadError.classList.add('hidden');
+                uploadError.textContent = '';
+                uploadProgress.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadForm.action, true);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.textContent = percent + '%';
+                    }
+                };
+
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const redirectUrl = xhr.responseURL || 'photo-admin-dashboard.php';
+                        window.location.href = redirectUrl;
+                        return;
+                    }
+                    uploadError.textContent = 'Upload failed. Please try again.';
+                    uploadError.classList.remove('hidden');
+                };
+
+                xhr.onerror = () => {
+                    uploadError.textContent = 'Network error during upload. Please try again.';
+                    uploadError.classList.remove('hidden');
+                };
+
+                const formData = new FormData(uploadForm);
+                xhr.send(formData);
+            });
+        }
+
         function previewImages() {
             const input = document.getElementById('photoInput');
             const previewArea = document.getElementById('previewArea');
