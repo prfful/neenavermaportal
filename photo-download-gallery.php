@@ -201,62 +201,80 @@ if (file_exists('backend/fetch-gallery-data.php')) {
     </footer>
 
     <script>
-        let currentPhoto = '';
-        let currentPhotoName = '';
+        (function () {
+            var currentPhoto = '';
+            var currentPhotoName = '';
 
-        function openLightbox(photoPath, photoName) {
-            document.getElementById('lightboxImg').src = photoPath;
-            document.getElementById('lightbox').classList.remove('hidden');
-            currentPhoto = photoPath;
-            currentPhotoName = photoName;
-        }
+            window.openLightbox = function (photoPath, photoName) {
+                var img = document.getElementById('lightboxImg');
+                var box = document.getElementById('lightbox');
+                if (img) {
+                    img.src = photoPath;
+                }
+                if (box) {
+                    box.classList.remove('hidden');
+                }
+                currentPhoto = photoPath;
+                currentPhotoName = photoName;
+            };
 
-        function closeLightbox() {
-            document.getElementById('lightbox').classList.add('hidden');
-        }
+            window.closeLightbox = function () {
+                var box = document.getElementById('lightbox');
+                if (box) {
+                    box.classList.add('hidden');
+                }
+            };
 
-            function downloadCurrentPhoto() {
-                // Download current photo
-                const a = document.createElement('a');
+            window.downloadCurrentPhoto = function () {
+                var a = document.createElement('a');
                 a.href = currentPhoto;
-                a.download = currentPhotoName;
+                a.download = currentPhotoName || 'photo';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-            }
+            };
 
-            function downloadAllPhotos(eventId) {
+            window.downloadAllPhotos = function (eventId) {
                 if (confirm('Download all photos as ZIP file?')) {
                     window.location.href = 'backend/download-all-photos.php?event_id=' + eventId;
                 }
-            }
-
-            // Filter events
-            if (document.getElementById('searchInput')) {
-                document.getElementById('searchInput').addEventListener('change', filterEvents);
-            }
-            if (document.getElementById('programFilter')) {
-                document.getElementById('programFilter').addEventListener('change', filterEvents);
-            }
-            if (document.getElementById('sortFilter')) {
-                document.getElementById('sortFilter').addEventListener('change', filterEvents);
-            }
+            };
 
             function filterEvents() {
-                const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
-                const programType = document.getElementById('programFilter')?.value || '';
-                const sortBy = document.getElementById('sortFilter')?.value || '';
+                var searchInput = document.getElementById('searchInput');
+                var programFilter = document.getElementById('programFilter');
+                var sortFilter = document.getElementById('sortFilter');
 
-                // TODO: Implement filtering logic with database query
-                console.log('Filtering:', { searchTerm, programType, sortBy });
+                var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+                var programType = programFilter ? programFilter.value : '';
+                var sortBy = sortFilter ? sortFilter.value : '';
+
+                console.log('Filtering:', {
+                    searchTerm: searchTerm,
+                    programType: programType,
+                    sortBy: sortBy
+                });
             }
 
-            // Keyboard navigation
-            document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeLightbox();
+            var searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', filterEvents);
             }
-        });
+            var programFilter = document.getElementById('programFilter');
+            if (programFilter) {
+                programFilter.addEventListener('change', filterEvents);
+            }
+            var sortFilter = document.getElementById('sortFilter');
+            if (sortFilter) {
+                sortFilter.addEventListener('change', filterEvents);
+            }
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    window.closeLightbox();
+                }
+            });
+        })();
     </script>
 
 </body>
