@@ -1,5 +1,7 @@
 <?php
-require_once '../includes/photo-gallery-db.php';
+// Support both direct include from root and AJAX calls from backend
+$base_dir = dirname(__DIR__);
+require_once $base_dir . '/includes/photo-gallery-db.php';
 
 // Get filter parameters
 $search = $_GET['search'] ?? '';

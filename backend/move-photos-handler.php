@@ -7,7 +7,8 @@ if (!isset($_SESSION['photo_admin_logged_in']) || $_SESSION['photo_admin_logged_
     exit;
 }
 
-require_once '../includes/photo-gallery-db.php';
+$base_dir = dirname(__DIR__);
+require_once $base_dir . '/includes/photo-gallery-db.php';
 
 $response = ['success' => false, 'message' => ''];
 
