@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `download_gallery_photos` (
 -- Create admin users table (for photo gallery admin)
 CREATE TABLE IF NOT EXISTS `photo_gallery_admins` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `username` varchar(100) NOT NULL UNIQUE,
+  `username` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL COMMENT 'Use password_hash()',
   `full_name` varchar(255) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
