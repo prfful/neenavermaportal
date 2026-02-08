@@ -1,6 +1,15 @@
 <?php
 require_once 'includes/photo-gallery-db.php';
-$events = include 'backend/fetch-gallery-data.php';
+// Load events from API
+$events = [];
+if (file_exists('backend/fetch-gallery-data.php')) {
+    ob_start();
+    $events = include 'backend/fetch-gallery-data.php';
+    ob_end_clean();
+    if (!is_array($events)) {
+        $events = [];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="hi">
@@ -206,37 +215,44 @@ $events = include 'backend/fetch-gallery-data.php';
             document.getElementById('lightbox').classList.add('hidden');
         }
 
-        funcalert('Downloading: ' + filename);
-        }
+            function downloadCurrentPhoto() {
+                // Download current photo
+                const a = document.createElement('a');
+                a.href = currentPhoto;
+                a.download = currentPhotoName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
 
-        function downloadCurrentPhoto() {
-            // Extract photo ID from current photo path or implement direct download
-            alert('Download: ' + currentPhotoName
-            downloadPhoto(currentPhoto + '.jpg');
-        }
+            function downloadAllPhotos(eventId) {
+                if (confirm('Download all photos as ZIP file?')) {
+                    window.location.href = 'backend/download-all-photos.php?event_id=' + eventId;
+                }
+            }
 
-        function downloadAllPhotos(eventId) {
-            // TODO: Implement ZIP download
-            alert('Downloading all photos for event: ' + eventId);
-            // Server will create ZIP and trigger download
-        }
+            // Filter events
+            if (document.getElementById('searchInput')) {
+                document.getElementById('searchInput').addEventListener('change', filterEvents);
+            }
+            if (document.getElementById('programFilter')) {
+                document.getElementById('programFilter').addEventListener('change', filterEvents);
+            }
+            if (document.getElementById('sortFilter')) {
+                document.getElementById('sortFilter').addEventListener('change', filterEvents);
+            }
 
-        // Sif (confirm('Download all photos as ZIP file?')) {
-                window.location.href = 'backend/download-all-photos.php?event_id=' + eventId;
-            }istener('change', filterEvents);
-        document.getElementById('sortFilter').addEventListener('change', filterEvents);
+            function filterEvents() {
+                const searchTerm = document.getElementById('searchInput')?.value.toLowerCase() || '';
+                const programType = document.getElementById('programFilter')?.value || '';
+                const sortBy = document.getElementById('sortFilter')?.value || '';
 
-        function filterEvents() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const programType = document.getElementById('programFilter').value;
-            const sortBy = document.getElementById('sortFilter').value;
+                // TODO: Implement filtering logic with database query
+                console.log('Filtering:', { searchTerm, programType, sortBy });
+            }
 
-            // TODO: Implement filtering logic with database query
-            console.log('Filtering:', { searchTerm, programType, sortBy });
-        }
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
+            // Keyboard navigation
+            document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeLightbox();
             }
