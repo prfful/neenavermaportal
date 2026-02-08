@@ -1,0 +1,58 @@
+# Git ignore file for neenavikramverma.in website
+# This ensures only THIS website's files are tracked
+
+# ==========================================
+# EXCLUDE OTHER SUBDOMAINS (Do NOT track)
+# ==========================================
+demo/
+work/
+sandeah/
+tmp/
+
+# ==========================================
+# EXCLUDE SENSITIVE FILES (Security)
+# ==========================================
+db_connect.php                    # Database password
+login_check.php                   # Authentication
+.env                              # Environment variables
+config.local.php                  # Local config
+
+# ==========================================
+# EXCLUDE USER-GENERATED CONTENT
+# ==========================================
+uploads/                          # User uploaded photos
+logs/                             # Log files
+*.log                             # Log files
+
+# ==========================================
+# EXCLUDE SYSTEM/CACHE FILES
+# ==========================================
+.DS_Store                         # macOS
+Thumbs.db                         # Windows thumbnails
+*.swp                             # Vim
+*.swo                             # Vim
+*~                                # Backup files
+.vscode/                          # VS Code settings
+.idea/                            # PHPStorm settings
+
+# ==========================================
+# EXCLUDE BACKUP/ARCHIVE FILES
+# ==========================================
+*.zip                             # Archived files
+*.tar                             # Compressed files
+*.rar                             # Compressed files
+demo*.zip                         # Demo backups
+demo*.rar                         # Demo backups
+
+# ==========================================
+# EXCLUDE DEVELOPMENT FILES
+# ==========================================
+node_modules/                     # NPM dependencies
+vendor/                           # Composer dependencies (if used)
+.env.local                        # Local environment
+
+# ==========================================
+# TRACK EVERYTHING ELSE (your website files)
+# ==========================================
+# CSS, JS, PHP, HTML - all tracked by default
+!.gitkeep                         # Keep empty directories
