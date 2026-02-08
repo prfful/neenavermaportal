@@ -7,7 +7,7 @@ if (!isset($_SESSION['photo_admin_logged_in']) || $_SESSION['photo_admin_logged_
     exit;
 }
 
-require_once 'includes/photo-gallery-db.php';
+require_once '../includes/photo-gallery-db.php';
 
 $response = ['success' => false, 'message' => ''];
 

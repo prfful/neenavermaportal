@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/photo-gallery-db.php';
+require_once '../includes/photo-gallery-db.php';
 
 if (!isset($_GET['photo_id'])) {
     http_response_code(400);

@@ -1,5 +1,5 @@
 <?php
-require_once 'includes/photo-gallery-db.php';
+require_once '../includes/photo-gallery-db.php';
 
 // Get filter parameters
 $search = $_GET['search'] ?? '';
