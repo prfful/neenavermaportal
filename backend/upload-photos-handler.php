@@ -103,6 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Generate unique filename
             $unique_filename = time() . '_' . uniqid() . '.' . $file_ext;
             $target_file = $event_dir . $unique_filename;
+            // Store absolute path for web access
+            $web_file_path = '/' . $target_file;
             
             // Move uploaded file
             if (move_uploaded_file($file_tmp, $target_file)) {
@@ -118,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert photo into database
                 $stmt = $conn->prepare("INSERT INTO download_gallery_photos (event_id, filename, original_filename, file_path, file_size, mime_type, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isssisii", $event_id, $unique_filename, $file_name, $target_file, $file_size, $file_type, $width, $height);
+                $stmt->bind_param("isssisii", $event_id, $unique_filename, $file_name, $web_file_path, $file_size, $file_type, $width, $height);
                 
                 if ($stmt->execute()) {
                     $uploaded_count++;

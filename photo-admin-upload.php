@@ -165,12 +165,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
     <script>
         const uploadForm = document.getElementById('uploadForm');
         const uploadProgress = document.getElementById('uploadProgress');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
 
         if (uploadForm) {
             uploadForm.addEventListener('submit', (e) => {
-                // Show progress bar on submit
+                e.preventDefault();
                 uploadProgress.classList.remove('hidden');
-                // Let form submit normally (no e.preventDefault)
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', uploadForm.action, true);
+
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percent = Math.round((e.loaded / e.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressText.textContent = percent + '%';
+                    }
+                });
+
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        // Success - redirect happens server-side
+                        progressText.textContent = '100%';
+                        setTimeout(() => {
+                            window.location.href = 'photo-admin-dashboard.php';
+                        }, 500);
+                    } else {
+                        alert('Upload failed. Please try again.');
+                        uploadProgress.classList.add('hidden');
+                    }
+                });
+
+                xhr.addEventListener('error', () => {
+                    alert('Network error during upload. Please try again.');
+                    uploadProgress.classList.add('hidden');
+                });
+
+                const formData = new FormData(uploadForm);
+                xhr.send(formData);
             });
         }
 
