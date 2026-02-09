@@ -9,13 +9,45 @@ if (!isset($_SESSION['photo_admin_logged_in']) || $_SESSION['photo_admin_logged_
 
 require_once 'includes/photo-gallery-db.php';
 
+// Handle delete requests
+if (isset($_GET['delete_photo'])) {
+    $photo_id = (int)$_GET['delete_photo'];
+    $photo_query = $conn->query("SELECT file_path FROM download_gallery_photos WHERE id = $photo_id");
+    if ($photo_query && $row = $photo_query->fetch_assoc()) {
+        $file_path = '.' . $row['file_path'];
+        if (file_exists($file_path)) {
+            unlink($file_path);
+        }
+    }
+    $conn->query("DELETE FROM download_gallery_photos WHERE id = $photo_id");
+    header('Location: photo-admin-manage.php?msg=Photo deleted');
+    exit;
+}
+
+if (isset($_GET['delete_event'])) {
+    $event_id = (int)$_GET['delete_event'];
+    // Delete all photos in the event
+    $photos = $conn->query("SELECT file_path FROM download_gallery_photos WHERE event_id = $event_id");
+    while ($photo = $photos->fetch_assoc()) {
+        $file_path = '.' . $photo['file_path'];
+        if (file_exists($file_path)) {
+            unlink($file_path);
+        }
+    }
+    $conn->query("DELETE FROM download_gallery_photos WHERE event_id = $event_id");
+    $conn->query("DELETE FROM download_gallery_events WHERE id = $event_id");
+    header('Location: photo-admin-manage.php?msg=Event deleted');
+    exit;
+}
+
 // Fetch all events with photos
-$query = "SELECT dge.*, COUNT(dgp.id) as photo_count,
-          SUM(dgp.file_size) as total_size
+$query = "SELECT dge.id, dge.event_name, dge.event_date, dge.program_type, dge.event_location, dge.is_active, dge.created_at,
+          COUNT(dgp.id) as photo_count,
+          COALESCE(SUM(dgp.file_size), 0) as total_size
           FROM download_gallery_events dge
           LEFT JOIN download_gallery_photos dgp ON dge.id = dgp.event_id AND dgp.is_moved_to_main = 0
           WHERE dge.is_active = 1
-          GROUP BY dge.id
+          GROUP BY dge.id, dge.event_name, dge.event_date, dge.program_type, dge.event_location, dge.is_active, dge.created_at
           ORDER BY dge.event_date DESC";
 $result = $conn->query($query);
 $events = [];
@@ -66,6 +98,12 @@ if ($result && $result->num_rows > 0) {
     </header>
 
     <div class="container mx-auto px-6 py-8">
+
+        <?php if (isset($_GET['msg'])): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-6">
+            ✓ <?php echo htmlspecialchars($_GET['msg']); ?>
+        </div>
+        <?php endif; ?>
 
         <!-- Filter Bar -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
@@ -215,6 +253,26 @@ if ($result && $result->num_rows > 0) {
         function updateSelectedCount() {
             const count = document.querySelectorAll('input[type="checkbox"]:checked:not(#selectAll)').length;
             document.getElementById('selectedCount').textContent = count;
+        }
+
+        function deletePhoto(photoId) {
+            if (confirm('Delete this photo?')) {
+                window.location.href = 'photo-admin-manage.php?delete_photo=' + photoId;
+            }
+        }
+
+        function deleteEvent(eventId) {
+            if (confirm('Delete entire event and all photos? This cannot be undone.')) {
+                window.location.href = 'photo-admin-manage.php?delete_event=' + eventId;
+            }
+        }
+
+        function viewPhoto(photoPath) {
+            window.open(photoPath, '_blank');
+        }
+
+        function editEvent(eventId) {
+            alert('Edit functionality coming soon');
         }
     </script>
 
