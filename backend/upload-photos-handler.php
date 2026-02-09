@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($event_name) || empty($event_date) || empty($program_type)) {
         $response['message'] = 'Please fill all required fields';
-        header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
+        header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
         exit;
     }
     
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!file_exists($event_dir)) {
         if (!mkdir($event_dir, 0755, true)) {
             $response['message'] = 'Failed to create upload directory';
-            header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
+            header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
             exit;
         }
     }
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!$stmt->execute()) {
         $response['message'] = 'Database error: ' . $stmt->error;
-        header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
+        header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
         exit;
     }
     
@@ -76,18 +76,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
             
-            // Validate file type
-            $allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+            // Validate file type by extension (browser MIME type can be unreliable)
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
             $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
             
-            if (!in_array($file_type, $allowed_types)) {
+            if (!in_array($file_ext, $allowed_exts)) {
                 $failed_count++;
+                error_log("Upload rejected: Invalid extension: $file_ext");
                 continue;
             }
             
             // Validate file size (max 5MB)
             if ($file_size > 5 * 1024 * 1024) {
                 $failed_count++;
+                error_log("Upload rejected: File too large: $file_size bytes");
                 continue;
             }
             
@@ -97,8 +99,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Move uploaded file
             if (move_uploaded_file($file_tmp, $target_file)) {
-                // Get image dimensions
-                list($width, $height) = getimagesize($target_file);
+                // Verify it's actually an image
+                $image_data = @getimagesize($target_file);
+                if (!$image_data) {
+                    error_log("Upload rejected: Not a valid image: $target_file");
+                    unlink($target_file);
+                    $failed_count++;
+                    continue;
+                }
+                list($width, $height) = $image_data;
                 
                 // Insert photo into database
                 $stmt = $conn->prepare("INSERT INTO download_gallery_photos (event_id, filename, original_filename, file_path, file_size, mime_type, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
@@ -108,12 +117,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $uploaded_count++;
                 } else {
                     $failed_count++;
-                    // Delete file if database insert fails
+                    error_log("DB insert failed: " . $stmt->error);
                     unlink($target_file);
                 }
                 $stmt->close();
             } else {
                 $failed_count++;
+                error_log("move_uploaded_file failed for: $file_name to: $target_file");
             }
         }
     }
@@ -127,11 +137,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message .= " | Failed: $failed_count photos";
     }
     
-    header('Location: ../photo-admin-dashboard.php?success=' . urlencode($message));
+    header('Location: /photo-admin-dashboard.php?success=' . urlencode($message));
     exit;
 
 } else {
-    header('Location: ../photo-admin-upload.php');
+    header('Location: /photo-admin-upload.php');
     exit;
 }
 ?>
