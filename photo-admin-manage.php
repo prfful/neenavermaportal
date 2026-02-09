@@ -14,13 +14,15 @@ if (isset($_GET['delete_photo'])) {
     $photo_id = (int)$_GET['delete_photo'];
     $photo_query = $conn->query("SELECT file_path FROM download_gallery_photos WHERE id = $photo_id");
     if ($photo_query && $row = $photo_query->fetch_assoc()) {
-        $file_path = '.' . $row['file_path'];
-        if (file_exists($file_path)) {
-            unlink($file_path);
+        // Remove leading / if present, then prepend current directory
+        $file_path = ltrim($row['file_path'], '/');
+        $full_path = __DIR__ . '/' . $file_path;
+        if (file_exists($full_path)) {
+            @unlink($full_path);
         }
     }
     $conn->query("DELETE FROM download_gallery_photos WHERE id = $photo_id");
-    header('Location: photo-admin-manage.php?msg=Photo deleted');
+    header('Location: photo-admin-manage.php?msg=Photo+deleted');
     exit;
 }
 
@@ -28,15 +30,18 @@ if (isset($_GET['delete_event'])) {
     $event_id = (int)$_GET['delete_event'];
     // Delete all photos in the event
     $photos = $conn->query("SELECT file_path FROM download_gallery_photos WHERE event_id = $event_id");
-    while ($photo = $photos->fetch_assoc()) {
-        $file_path = '.' . $photo['file_path'];
-        if (file_exists($file_path)) {
-            unlink($file_path);
+    if ($photos) {
+        while ($photo = $photos->fetch_assoc()) {
+            $file_path = ltrim($photo['file_path'], '/');
+            $full_path = __DIR__ . '/' . $file_path;
+            if (file_exists($full_path)) {
+                @unlink($full_path);
+            }
         }
     }
     $conn->query("DELETE FROM download_gallery_photos WHERE event_id = $event_id");
     $conn->query("DELETE FROM download_gallery_events WHERE id = $event_id");
-    header('Location: photo-admin-manage.php?msg=Event deleted');
+    header('Location: photo-admin-manage.php?msg=Event+deleted');
     exit;
 }
 
