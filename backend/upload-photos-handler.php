@@ -118,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 // Insert photo into database
                 $stmt = $conn->prepare("INSERT INTO download_gallery_photos (event_id, filename, original_filename, file_path, file_size, mime_type, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isssissii", $event_id, $unique_filename, $file_name, $target_file, $file_size, $file_type, $width, $height);
+                $stmt->bind_param("isssisii", $event_id, $unique_filename, $file_name, $target_file, $file_size, $file_type, $width, $height);
                 
                 if ($stmt->execute()) {
                     $uploaded_count++;
