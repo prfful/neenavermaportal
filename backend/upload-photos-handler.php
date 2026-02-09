@@ -23,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (empty($event_name) || empty($event_date) || empty($program_type)) {
         $response['message'] = 'Please fill all required fields';
-        header('Location: photo-admin-upload.php?error=' . urlencode($response['message']));
+        header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
         exit;
     }
     
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!file_exists($event_dir)) {
         if (!mkdir($event_dir, 0755, true)) {
             $response['message'] = 'Failed to create upload directory';
-            header('Location: photo-admin-upload.php?error=' . urlencode($response['message']));
+            header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
             exit;
         }
     }
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     if (!$stmt->execute()) {
         $response['message'] = 'Database error: ' . $stmt->error;
-        header('Location: photo-admin-upload.php?error=' . urlencode($response['message']));
+        header('Location: ../photo-admin-upload.php?error=' . urlencode($response['message']));
         exit;
     }
     
@@ -127,11 +127,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message .= " | Failed: $failed_count photos";
     }
     
-    header('Location: photo-admin-dashboard.php?success=' . urlencode($message));
+    header('Location: ../photo-admin-dashboard.php?success=' . urlencode($message));
     exit;
 
 } else {
-    header('Location: photo-admin-upload.php');
+    header('Location: ../photo-admin-upload.php');
     exit;
 }
 ?>

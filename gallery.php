@@ -1,14 +1,8 @@
 <?php
 session_start();
-//include_once("db_connect.php");
+include_once("db_connect.php");
 
-// ✅ Database connection
-$conn = new mysqli("localhost", "u590837060_websitedharfc", "Dharfc@232111", "u590837060_Mainsitedb");
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// ✅ Fetch events grouped by event_name + event_date (latest first)
+// Fetch events grouped by event_name + event_date (latest first)
 $sql = "SELECT event_name, event_date FROM gallery GROUP BY event_name, event_date ORDER BY event_date DESC, uploaded_at DESC";
 $events = $conn->query($sql);
 ?>

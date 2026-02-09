@@ -165,47 +165,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
     <script>
         const uploadForm = document.getElementById('uploadForm');
         const uploadProgress = document.getElementById('uploadProgress');
-        const progressBar = document.getElementById('progressBar');
-        const progressText = document.getElementById('progressText');
-        const uploadError = document.getElementById('uploadError');
 
         if (uploadForm) {
             uploadForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                uploadError.classList.add('hidden');
-                uploadError.textContent = '';
+                // Show progress bar on submit
                 uploadProgress.classList.remove('hidden');
-                progressBar.style.width = '0%';
-                progressText.textContent = '0%';
-
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', uploadForm.action, true);
-
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percent = Math.round((event.loaded / event.total) * 100);
-                        progressBar.style.width = percent + '%';
-                        progressText.textContent = percent + '%';
-                    }
-                };
-
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        const redirectUrl = xhr.responseURL || 'photo-admin-dashboard.php';
-                        window.location.href = redirectUrl;
-                        return;
-                    }
-                    uploadError.textContent = 'Upload failed. Please try again.';
-                    uploadError.classList.remove('hidden');
-                };
-
-                xhr.onerror = () => {
-                    uploadError.textContent = 'Network error during upload. Please try again.';
-                    uploadError.classList.remove('hidden');
-                };
-
-                const formData = new FormData(uploadForm);
-                xhr.send(formData);
+                // Let form submit normally (no e.preventDefault)
             });
         }
 

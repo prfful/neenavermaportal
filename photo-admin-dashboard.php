@@ -15,14 +15,20 @@ $stats_query = "SELECT
     (SELECT COUNT(*) FROM download_gallery_events WHERE is_active = 1 AND delete_date >= CURDATE()) as active_events,
     (SELECT COUNT(*) FROM download_gallery_photos WHERE is_moved_to_main = 0) as pending_approval";
 $stats_result = $conn->query($stats_query);
-$stats = $stats_result->fetch_assoc();
-
-$total_photos = $stats['total_photos'] ?? 0;
-$active_events = $stats['active_events'] ?? 0;
-$pending_approval = $stats['pending_approval'] ?? 0;
+if ($stats_result) {
+    $stats = $stats_result->fetch_assoc();
+    $total_photos = $stats['total_photos'] ?? 0;
+    $active_events = $stats['active_events'] ?? 0;
+    $pending_approval = $stats['pending_approval'] ?? 0;
+} else {
+    $total_photos = 0;
+    $active_events = 0;
+    $pending_approval = 0;
+    $error_msg = 'Database tables not found. Please import database/photo_gallery_structure.sql.';
+}
 
 $success_msg = $_GET['success'] ?? '';
-$error_msg = $_GET['error'] ?? '';
+$error_msg = $error_msg ?? ($_GET['error'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="hi">
