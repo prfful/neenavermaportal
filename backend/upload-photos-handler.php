@@ -11,6 +11,12 @@ $base_dir = dirname(__DIR__);
 require_once $base_dir . '/includes/photo-gallery-db.php';
 
 $response = ['success' => false, 'message' => ''];
+$log_file = $base_dir . '/uploads/upload_debug.log';
+
+function log_debug($msg) {
+    global $log_file;
+    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n", FILE_APPEND);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
@@ -59,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Process uploaded files
     $uploaded_count = 0;
     $failed_count = 0;
+    log_debug("Starting upload: Total files = " . count($_FILES['photos']['name']));
     
     if (isset($_FILES['photos']) && !empty($_FILES['photos']['name'][0])) {
         $total_files = count($_FILES['photos']['name']);
@@ -82,14 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             if (!in_array($file_ext, $allowed_exts)) {
                 $failed_count++;
-                error_log("Upload rejected: Invalid extension: $file_ext");
+                log_debug("File $i REJECTED: Invalid extension '$file_ext', allowed: " . implode(',', $allowed_exts));
                 continue;
             }
             
             // Validate file size (max 5MB)
             if ($file_size > 5 * 1024 * 1024) {
                 $failed_count++;
-                error_log("Upload rejected: File too large: $file_size bytes");
+                log_debug("File $i REJECTED: Size " . ($file_size/1024/1024) . "MB exceeds 5MB");
                 continue;
             }
             
@@ -115,15 +122,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
                 if ($stmt->execute()) {
                     $uploaded_count++;
+                    log_debug("File $i SUCCESS: Uploaded and recorded in DB");
                 } else {
                     $failed_count++;
-                    error_log("DB insert failed: " . $stmt->error);
+                    log_debug("File $i REJECTED: DB insert failed - " . $stmt->error);
                     unlink($target_file);
                 }
                 $stmt->close();
             } else {
                 $failed_count++;
-                error_log("move_uploaded_file failed for: $file_name to: $target_file");
+                log_debug("File $i REJECTED: move_uploaded_file failed for $file_name");
             }
         }
     }
