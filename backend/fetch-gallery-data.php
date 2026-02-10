@@ -26,17 +26,17 @@ if (!empty($program_type)) {
 
 $query .= " GROUP BY dge.id HAVING photo_count > 0";
 
-// Sorting
+// Sorting (latest events first by default)
 switch ($sort) {
     case 'date_asc':
-        $query .= " ORDER BY dge.event_date ASC";
+        $query .= " ORDER BY dge.event_date ASC, dge.created_at ASC, dge.id ASC";
         break;
     case 'name_asc':
         $query .= " ORDER BY dge.event_name ASC";
         break;
     case 'date_desc':
     default:
-        $query .= " ORDER BY dge.event_date DESC";
+        $query .= " ORDER BY dge.event_date DESC, dge.created_at DESC, dge.id DESC";
         break;
 }
 
