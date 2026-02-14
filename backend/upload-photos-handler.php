@@ -37,11 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $delete_date = date('Y-m-d', strtotime($event_date . ' + 5 days'));
     
     // Create upload directory if not exists
-    $upload_base_dir = 'uploads/download_gallery/';
-    $event_dir = $upload_base_dir . date('Y-m', strtotime($event_date)) . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $event_name) . '/';
-    
-    if (!file_exists($event_dir)) {
-        if (!mkdir($event_dir, 0755, true)) {
+    $upload_base_dir_rel = 'uploads/download_gallery';
+    $event_dir_rel = $upload_base_dir_rel . '/' . date('Y-m', strtotime($event_date)) . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $event_name);
+    $event_dir_fs = $base_dir . '/' . $event_dir_rel . '/';
+
+    if (!file_exists($event_dir_fs)) {
+        if (!mkdir($event_dir_fs, 0755, true)) {
             $response['message'] = 'Failed to create upload directory';
             header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
             exit;
@@ -102,9 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
             // Generate unique filename
             $unique_filename = time() . '_' . uniqid() . '.' . $file_ext;
-            $target_file = $event_dir . $unique_filename;
-            // Store absolute path for web access
-            $web_file_path = '/' . $target_file;
+            $target_file = $event_dir_fs . $unique_filename;
+            $web_file_path = '/' . $event_dir_rel . '/' . $unique_filename;
             
             // Move uploaded file
             if (move_uploaded_file($file_tmp, $target_file)) {
