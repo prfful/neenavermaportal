@@ -9,6 +9,27 @@ if (!isset($_SESSION['photo_admin_logged_in']) || $_SESSION['photo_admin_logged_
 
 require_once 'includes/photo-gallery-db.php';
 
+// Handle event updates
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_event_id'])) {
+    $event_id = (int)$_POST['edit_event_id'];
+    $event_name = trim($_POST['event_name'] ?? '');
+    $event_date = trim($_POST['event_date'] ?? '');
+    $program_type = trim($_POST['program_type'] ?? '');
+    $event_location = trim($_POST['event_location'] ?? '');
+
+    if ($event_name === '' || $event_date === '' || $program_type === '') {
+        $error_message = 'Please fill all required fields.';
+    } else {
+        $event_location = $event_location !== '' ? $event_location : null;
+        $stmt = $conn->prepare("UPDATE download_gallery_events SET event_name = ?, event_date = ?, program_type = ?, event_location = ? WHERE id = ?");
+        $stmt->bind_param('ssssi', $event_name, $event_date, $program_type, $event_location, $event_id);
+        $stmt->execute();
+        $stmt->close();
+        header('Location: photo-admin-manage.php?msg=Event+updated');
+        exit;
+    }
+}
+
 // Handle delete requests
 if (isset($_GET['delete_photo'])) {
     $photo_id = (int)$_GET['delete_photo'];
@@ -110,6 +131,12 @@ if ($result && $result->num_rows > 0) {
         </div>
         <?php endif; ?>
 
+        <?php if (isset($error_message)): ?>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <?php echo htmlspecialchars($error_message); ?>
+        </div>
+        <?php endif; ?>
+
         <!-- Filter Bar -->
         <div class="bg-white rounded-lg shadow p-6 mb-8">
             <div class="grid md:grid-cols-4 gap-4">
@@ -167,13 +194,21 @@ if ($result && $result->num_rows > 0) {
                     <div>
                         <h3 class="text-xl font-bold"><?php echo htmlspecialchars($event['event_name']); ?></h3>
                         <p class="text-sm text-orange-100">
-                            📅 <?php echo date('d M Y', strtotime($event['event_date'])); ?> | 
+                            📅 <?php echo date('d M Y', strtotime($event['event_date'])); ?> |
                             <?php if ($event['event_location']): ?>📍 <?php echo htmlspecialchars($event['event_location']); ?> | <?php endif; ?>
                             🏷️ <?php echo htmlspecialchars($event['program_type']); ?>
                         </p>
                     </div>
                     <div class="flex space-x-2">
-                        <button onclick="editEvent(<?php echo $event['id']; ?>)" class="bg-white text-orange-600 px-3 py-1 rounded text-sm font-semibold hover:bg-orange-50">
+                        <button
+                            class="bg-white text-orange-600 px-3 py-1 rounded text-sm font-semibold hover:bg-orange-50"
+                            onclick="editEvent(this)"
+                            data-event-id="<?php echo $event['id']; ?>"
+                            data-event-name="<?php echo htmlspecialchars($event['event_name'], ENT_QUOTES); ?>"
+                            data-event-date="<?php echo htmlspecialchars($event['event_date'], ENT_QUOTES); ?>"
+                            data-program-type="<?php echo htmlspecialchars($event['program_type'], ENT_QUOTES); ?>"
+                            data-event-location="<?php echo htmlspecialchars($event['event_location'] ?? '', ENT_QUOTES); ?>"
+                        >
                             ✏️ Edit
                         </button>
                         <button onclick="deleteEvent(<?php echo $event['id']; ?>)" class="bg-red-600 text-white px-3 py-1 rounded text-sm font-semibold hover:bg-red-700">
@@ -184,13 +219,12 @@ if ($result && $result->num_rows > 0) {
 
                 <div class="p-6">
                     <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                        
                         <?php foreach ($event['photos'] as $photo): ?>
                         <div class="relative group">
-                            <input type="checkbox" class="photo-checkbox absolute top-2 left-2 z-10 w-5 h-5" 
+                            <input type="checkbox" class="photo-checkbox absolute top-2 left-2 z-10 w-5 h-5"
                                    data-photo-id="<?php echo $photo['id']; ?>" onchange="updateSelectedCount()">
-                            <img src="<?php echo htmlspecialchars($photo['file_path']); ?>" 
-                                 alt="<?php echo htmlspecialchars($photo['original_filename']); ?>" 
+                            <img src="<?php echo htmlspecialchars($photo['file_path']); ?>"
+                                 alt="<?php echo htmlspecialchars($photo['original_filename']); ?>"
                                  class="w-full h-32 object-cover rounded-lg shadow">
                             <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-60 transition rounded-lg flex items-center justify-center">
                                 <div class="opacity-0 group-hover:opacity-100 transition space-x-2">
@@ -205,58 +239,70 @@ if ($result && $result->num_rows > 0) {
                             <p class="text-xs text-center mt-1 text-gray-600"><?php echo number_format($photo['file_size'] / 1024, 0); ?> KB</p>
                         </div>
                         <?php endforeach; ?>
-
                     </div>
 
                     <div class="mt-4 flex justify-between items-center text-sm text-gray-600">
                         <span>Total: <?php echo $event['photo_count']; ?> photos | Size: <?php echo number_format($event['total_size'] / 1024 / 1024, 1); ?> MB</span>
                         <span class="text-yellow-700">⏳ Expires: <?php echo date('d M Y', strtotime($event['delete_date'])); ?></span>
-                    </div>.photo-checkbox');
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+
+            <?php endif; ?>
+
+        </div>
+    </div>
+
+    <!-- Edit Event Modal -->
+    <div id="editEventModal" class="fixed inset-0 hidden items-center justify-center bg-black bg-opacity-50 z-50">
+        <div class="bg-white rounded-lg w-full max-w-lg mx-4 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-bold text-gray-800">Edit Event</h2>
+                <button type="button" onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form method="post">
+                <input type="hidden" name="edit_event_id" id="edit_event_id">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Event Name *</label>
+                        <input type="text" name="event_name" id="edit_event_name" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Event Date *</label>
+                        <input type="date" name="event_date" id="edit_event_date" class="w-full px-3 py-2 border rounded-lg" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Program Type *</label>
+                        <select name="program_type" id="edit_program_type" class="w-full px-3 py-2 border rounded-lg" required>
+                            <option value="">Select</option>
+                            <option value="जन समारोह">जन समारोह</option>
+                            <option value="शिक्षा">शिक्षा</option>
+                            <option value="स्वास्थ्य">स्वास्थ्य</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Location</label>
+                        <input type="text" name="event_location" id="edit_event_location" class="w-full px-3 py-2 border rounded-lg">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.photo-checkbox');
             checkboxes.forEach(cb => cb.checked = this.checked);
             updateSelectedCount();
         });
 
         function updateSelectedCount() {
             const count = document.querySelectorAll('.photo-checkbox:checked').length;
-            document.getElementById('selectedCount').textContent = count;
-        }
-
-        function viewPhoto(photoPath) {
-            window.open(photoPath, '_blank');
-        }
-
-        function deletePhoto(photoId) {
-            if (confirm('Are you sure you want to delete this photo?')) {
-                // TODO: Implement delete via AJAX
-                alert('Delete photo #' + photoId);
-                location.reload();
-            }
-        }
-
-        function editEvent(eventId) {
-            // TODO: Implement edit modal or redirect
-            alert('Edit event #' + eventId);
-        }
-
-        function deleteEvent(eventId) {
-            if (confirm('Are you sure you want to delete this entire event and all its photos?')) {
-                // TODO: Implement delete via AJAX
-                alert('Delete event #' + eventId);
-                location.reload();
-            }
-
-    </div>
-
-    <script>
-        // Select all functionality
-        document.getElementById('selectAll').addEventListener('change', function() {
-            const checkboxes = document.querySelectorAll('input[type="checkbox"]:not(#selectAll)');
-            checkboxes.forEach(cb => cb.checked = this.checked);
-            updateSelectedCount();
-        });
-
-        function updateSelectedCount() {
-            const count = document.querySelectorAll('input[type="checkbox"]:checked:not(#selectAll)').length;
             document.getElementById('selectedCount').textContent = count;
         }
 
@@ -276,8 +322,21 @@ if ($result && $result->num_rows > 0) {
             window.open(photoPath, '_blank');
         }
 
-        function editEvent(eventId) {
-            alert('Edit functionality coming soon');
+        function editEvent(button) {
+            const modal = document.getElementById('editEventModal');
+            document.getElementById('edit_event_id').value = button.dataset.eventId;
+            document.getElementById('edit_event_name').value = button.dataset.eventName || '';
+            document.getElementById('edit_event_date').value = button.dataset.eventDate || '';
+            document.getElementById('edit_program_type').value = button.dataset.programType || '';
+            document.getElementById('edit_event_location').value = button.dataset.eventLocation || '';
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeEditModal() {
+            const modal = document.getElementById('editEventModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
     </script>
 

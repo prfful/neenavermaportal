@@ -22,9 +22,11 @@ if ($result->num_rows === 0) {
 
 $photo = $result->fetch_assoc();
 $file_path = $photo['file_path'];
+$relative_path = ltrim($file_path, '/');
+$full_path = $base_dir . '/' . $relative_path;
 
 // Check if file exists
-if (!file_exists($file_path)) {
+if (!file_exists($full_path)) {
     http_response_code(404);
     die('File not found');
 }
@@ -55,13 +57,13 @@ header('Content-Transfer-Encoding: binary');
 header('Expires: 0');
 header('Cache-Control: must-revalidate');
 header('Pragma: public');
-header('Content-Length: ' . filesize($file_path));
+header('Content-Length: ' . filesize($full_path));
 
 // Clear output buffer
 ob_clean();
 flush();
 
 // Read file and output
-readfile($file_path);
+readfile($full_path);
 exit;
 ?>

@@ -1,5 +1,6 @@
 <?php
-require_once '../includes/photo-gallery-db.php';
+$base_dir = dirname(__DIR__);
+require_once $base_dir . '/includes/photo-gallery-db.php';
 
 if (!isset($_GET['event_id'])) {
     http_response_code(400);
@@ -45,8 +46,10 @@ if ($zip->open($zip_path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== TRUE) 
 // Add photos to ZIP
 $added_count = 0;
 while ($photo = $photo_result->fetch_assoc()) {
-    if (file_exists($photo['file_path'])) {
-        $zip->addFile($photo['file_path'], $photo['original_filename']);
+    $relative_path = ltrim($photo['file_path'], '/');
+    $full_path = $base_dir . '/' . $relative_path;
+    if (file_exists($full_path)) {
+        $zip->addFile($full_path, $photo['original_filename']);
         $added_count++;
     }
 }

@@ -1,7 +1,14 @@
 <?php
 session_start();
 
-// Check if logged in
+/* =========================
+   FORCE TIMEZONE (IMPORTANT)
+   ========================= */
+date_default_timezone_set('Asia/Kolkata');
+
+/* =========================
+   AUTH CHECK
+   ========================= */
 if (!isset($_SESSION['photo_admin_logged_in']) || $_SESSION['photo_admin_logged_in'] !== true) {
     echo json_encode(['success' => false, 'message' => 'Unauthorized']);
     exit;
@@ -15,143 +22,214 @@ $log_file = $base_dir . '/uploads/upload_debug.log';
 
 function log_debug($msg) {
     global $log_file;
-    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] " . $msg . "\n", FILE_APPEND);
+    file_put_contents(
+        $log_file,
+        "[" . date('Y-m-d H:i:s') . "] " . $msg . PHP_EOL,
+        FILE_APPEND
+    );
 }
 
+/* =========================
+   POST REQUEST HANDLING
+   ========================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    
-    // Validate form data
-    $event_name = sanitize_input($_POST['event_name'] ?? '');
-    $event_date = sanitize_input($_POST['event_date'] ?? '');
-    $program_type = sanitize_input($_POST['program_type'] ?? '');
-    $event_location = sanitize_input($_POST['event_location'] ?? '');
-    $description = sanitize_input($_POST['description'] ?? '');
-    
-    if (empty($event_name) || empty($event_date) || empty($program_type)) {
-        $response['message'] = 'Please fill all required fields';
-        header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
+
+    /* -------------------------
+       SANITIZE INPUTS
+       ------------------------- */
+    $event_name      = sanitize_input($_POST['event_name'] ?? '');
+    $event_date_raw  = sanitize_input($_POST['event_date'] ?? '');
+    $program_type    = sanitize_input($_POST['program_type'] ?? '');
+    $event_location  = sanitize_input($_POST['event_location'] ?? '');
+    $description     = sanitize_input($_POST['description'] ?? '');
+
+    if (empty($event_name) || empty($event_date_raw) || empty($program_type)) {
+        $msg = 'Please fill all required fields';
+        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
         exit;
     }
-    
-    // Calculate delete date (5 days after event date)
-    $delete_date = date('Y-m-d', strtotime($event_date . ' + 5 days'));
-    
-    // Create upload directory if not exists
+
+    /* -------------------------
+       SAFE DATE HANDLING
+       ------------------------- */
+    try {
+        // Expecting event_date in YYYY-MM-DD
+        $eventDateObj = new DateTime($event_date_raw);
+    } catch (Exception $e) {
+        log_debug("INVALID event_date received: " . $event_date_raw);
+        $msg = 'Invalid event date format';
+        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
+        exit;
+    }
+
+    // Clone and add 5 days
+    $deleteDateObj = clone $eventDateObj;
+    $deleteDateObj->modify('+5 days');
+
+    // Database-safe formats
+    $event_date  = $eventDateObj->format('Y-m-d');
+    $delete_date = $deleteDateObj->format('Y-m-d');
+
+    // Optional ISO format (useful for frontend if needed)
+    $delete_date_iso = $deleteDateObj->format('Y-m-d\T00:00:00P');
+
+    log_debug("Event date: $event_date | Delete date: $delete_date");
+
+    /* -------------------------
+       CREATE UPLOAD DIRECTORY
+       ------------------------- */
     $upload_base_dir_rel = 'uploads/download_gallery';
-    $event_dir_rel = $upload_base_dir_rel . '/' . date('Y-m', strtotime($event_date)) . '/' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $event_name);
+    $event_dir_rel = $upload_base_dir_rel . '/'
+        . $eventDateObj->format('Y-m')
+        . '/'
+        . preg_replace('/[^a-zA-Z0-9_-]/', '_', $event_name);
+
     $event_dir_fs = $base_dir . '/' . $event_dir_rel . '/';
 
     if (!file_exists($event_dir_fs)) {
         if (!mkdir($event_dir_fs, 0755, true)) {
-            $response['message'] = 'Failed to create upload directory';
-            header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
+            $msg = 'Failed to create upload directory';
+            header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
             exit;
         }
     }
-    
-    // Insert event into database
-    $stmt = $conn->prepare("INSERT INTO download_gallery_events (event_name, event_date, program_type, event_location, description, delete_date, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+    /* -------------------------
+       INSERT EVENT
+       ------------------------- */
+    $stmt = $conn->prepare(
+        "INSERT INTO download_gallery_events
+        (event_name, event_date, program_type, event_location, description, delete_date, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?)"
+    );
+
     $created_by = $_SESSION['photo_admin_username'];
-    $stmt->bind_param("sssssss", $event_name, $event_date, $program_type, $event_location, $description, $delete_date, $created_by);
-    
+    $stmt->bind_param(
+        "sssssss",
+        $event_name,
+        $event_date,
+        $program_type,
+        $event_location,
+        $description,
+        $delete_date,
+        $created_by
+    );
+
     if (!$stmt->execute()) {
-        $response['message'] = 'Database error: ' . $stmt->error;
-        header('Location: /photo-admin-upload.php?error=' . urlencode($response['message']));
+        $msg = 'Database error: ' . $stmt->error;
+        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
         exit;
     }
-    
+
     $event_id = $stmt->insert_id;
     $stmt->close();
-    
-    // Process uploaded files
+
+    /* -------------------------
+       FILE UPLOADS
+       ------------------------- */
     $uploaded_count = 0;
-    $failed_count = 0;
-    log_debug("Starting upload: Total files = " . count($_FILES['photos']['name']));
-    
-    if (isset($_FILES['photos']) && !empty($_FILES['photos']['name'][0])) {
-        $total_files = count($_FILES['photos']['name']);
-        
+    $failed_count   = 0;
+
+    if (!empty($_FILES['photos']['name'][0])) {
+
+        $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        $total_files  = count($_FILES['photos']['name']);
+
         for ($i = 0; $i < $total_files; $i++) {
-            $file_name = $_FILES['photos']['name'][$i];
-            $file_tmp = $_FILES['photos']['tmp_name'][$i];
-            $file_size = $_FILES['photos']['size'][$i];
-            $file_error = $_FILES['photos']['error'][$i];
-            $file_type = $_FILES['photos']['type'][$i];
-            
-            // Skip if error
-            if ($file_error !== UPLOAD_ERR_OK) {
+
+            if ($_FILES['photos']['error'][$i] !== UPLOAD_ERR_OK) {
                 $failed_count++;
                 continue;
             }
-            
-            // Validate file type by extension (browser MIME type can be unreliable)
-            $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+            $file_name = $_FILES['photos']['name'][$i];
+            $file_tmp  = $_FILES['photos']['tmp_name'][$i];
+            $file_size = $_FILES['photos']['size'][$i];
+            $file_type = $_FILES['photos']['type'][$i];
+
             $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-            
+
             if (!in_array($file_ext, $allowed_exts)) {
                 $failed_count++;
-                log_debug("File $i REJECTED: Invalid extension '$file_ext', allowed: " . implode(',', $allowed_exts));
                 continue;
             }
-            
-            // Validate file size (max 5MB)
+
             if ($file_size > 5 * 1024 * 1024) {
                 $failed_count++;
-                log_debug("File $i REJECTED: Size " . ($file_size/1024/1024) . "MB exceeds 5MB");
                 continue;
             }
-            
-            // Generate unique filename
-            $unique_filename = time() . '_' . uniqid() . '.' . $file_ext;
-            $target_file = $event_dir_fs . $unique_filename;
-            $web_file_path = '/' . $event_dir_rel . '/' . $unique_filename;
-            
-            // Move uploaded file
-            if (move_uploaded_file($file_tmp, $target_file)) {
-                // Verify it's actually an image
-                $image_data = @getimagesize($target_file);
-                if (!$image_data) {
-                    error_log("Upload rejected: Not a valid image: $target_file");
-                    unlink($target_file);
-                    $failed_count++;
-                    continue;
-                }
-                list($width, $height) = $image_data;
-                
-                // Insert photo into database
-                $stmt = $conn->prepare("INSERT INTO download_gallery_photos (event_id, filename, original_filename, file_path, file_size, mime_type, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("isssisii", $event_id, $unique_filename, $file_name, $web_file_path, $file_size, $file_type, $width, $height);
-                
-                if ($stmt->execute()) {
-                    $uploaded_count++;
-                    log_debug("File $i SUCCESS: Uploaded and recorded in DB");
-                } else {
-                    $failed_count++;
-                    log_debug("File $i REJECTED: DB insert failed - " . $stmt->error);
-                    unlink($target_file);
-                }
-                $stmt->close();
-            } else {
+
+            $unique_filename = time() . '_' . uniqid('', true) . '.' . $file_ext;
+            $target_file     = $event_dir_fs . $unique_filename;
+            $web_file_path   = '/' . $event_dir_rel . '/' . $unique_filename;
+
+            if (!move_uploaded_file($file_tmp, $target_file)) {
                 $failed_count++;
-                log_debug("File $i REJECTED: move_uploaded_file failed for $file_name");
+                continue;
             }
+
+            $image_data = @getimagesize($target_file);
+            if (!$image_data) {
+                unlink($target_file);
+                $failed_count++;
+                continue;
+            }
+
+            [$width, $height] = $image_data;
+
+            $stmt = $conn->prepare(
+                "INSERT INTO download_gallery_photos
+                (event_id, filename, original_filename, file_path, file_size, mime_type, width, height)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            );
+
+            $stmt->bind_param(
+                "isssisii",
+                $event_id,
+                $unique_filename,
+                $file_name,
+                $web_file_path,
+                $file_size,
+                $file_type,
+                $width,
+                $height
+            );
+
+            if ($stmt->execute()) {
+                $uploaded_count++;
+            } else {
+                unlink($target_file);
+                $failed_count++;
+            }
+
+            $stmt->close();
         }
     }
-    
-    // Log activity
-    log_activity($_SESSION['photo_admin_id'] ?? 0, 'upload_photos', "Event: $event_name, Uploaded: $uploaded_count, Failed: $failed_count");
-    
-    // Redirect with success message
-    $message = "✓ Event created successfully! Uploaded: $uploaded_count photos";
+
+    /* -------------------------
+       ACTIVITY LOG
+       ------------------------- */
+    log_activity(
+        $_SESSION['photo_admin_id'] ?? 0,
+        'upload_photos',
+        "Event: $event_name | Uploaded: $uploaded_count | Failed: $failed_count"
+    );
+
+    /* -------------------------
+       REDIRECT
+       ------------------------- */
+    $msg = "✓ Event created successfully! Uploaded: $uploaded_count";
     if ($failed_count > 0) {
-        $message .= " | Failed: $failed_count photos";
+        $msg .= " | Failed: $failed_count";
     }
-    
-    header('Location: /photo-admin-dashboard.php?success=' . urlencode($message));
+
+    header('Location: /photo-admin-dashboard.php?success=' . urlencode($msg));
     exit;
 
-} else {
-    header('Location: /photo-admin-upload.php');
-    exit;
 }
-?>
+
+/* =========================
+   FALLBACK
+   ========================= */
+header('Location: /photo-admin-upload.php');
+exit;
