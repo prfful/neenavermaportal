@@ -104,7 +104,7 @@ if ($result && $result->num_rows > 0) {
                 <?php foreach ($event['photos'] as $photo): ?>
                     <div class="relative">
                         <input type="checkbox"
-                            class="photo-checkbox absolute top-2 left-2"
+                            class="photo-checkbox absolute top-2 left-2 z-10 cursor-pointer"
                             data-event="event_<?= $event['id'] ?>"
                             data-photo="<?= $photo['id'] ?>"
                             onchange="updateSelection()">
@@ -126,8 +126,16 @@ function updateSelection() {
     document.getElementById('moveBtn').disabled = count === 0;
 }
 
-document.getElementById('selectAll').addEventListener('change', function () {
-    document.querySelectorAll('.photo-checkbox').forEach(cb => cb.checked = this.checked);
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('selectAll').addEventListener('change', function () {
+        document.querySelectorAll('.photo-checkbox').forEach(cb => cb.checked = this.checked);
+        updateSelection();
+    });
+
+    document.querySelectorAll('.photo-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateSelection);
+    });
+
     updateSelection();
 });
 
@@ -140,10 +148,16 @@ function selectEventAll(el) {
 
 function moveSelectedPhotos() {
     const selected = document.querySelectorAll('.photo-checkbox:checked');
-    if (!selected.length) return alert('Select photos first');
+    if (!selected.length) {
+        alert('Select photos first');
+        return;
+    }
 
     const formData = new FormData();
     selected.forEach(cb => formData.append('photo_ids[]', cb.dataset.photo));
+
+    console.log('=== COPY TO MAIN GALLERY ===');
+    console.log('Selected photos:', selected.length);
 
     fetch('backend/move-photos-handler.php', {
         method: 'POST',
@@ -151,10 +165,36 @@ function moveSelectedPhotos() {
     })
     .then(r => r.json())
     .then(res => {
+        // Log everything to console BEFORE showing alert
+        console.log('=== RESPONSE ===');
+        console.log('Full response:', res);
+        console.log('Message:', res.message);
+        console.log('Moved:', res.moved);
+        console.log('Skipped:', res.skipped);
+        console.log('Failed:', res.failed);
+        
+        if (res.debug && res.debug.length > 0) {
+            console.log('=== DEBUG INFO ===');
+            res.debug.forEach((msg, i) => console.log(`[${i}]`, msg));
+        }
+        
+        console.log('=== END ===');
+        
+        // Now show alert (user can dismiss without losing console logs)
         alert(res.message);
-        location.reload();
+        
+        if (res.moved > 0) {
+            location.reload();
+        }
     })
-    .catch(() => alert('Network error'));
+    .catch(err => {
+        // Log error details BEFORE showing alert
+        console.error('=== FETCH ERROR ===');
+        console.error('Error:', err);
+        console.error('Stack:', err.stack);
+        console.error('=== END ===');
+        alert('Network error: ' + err.message);
+    });
 }
 </script>
 

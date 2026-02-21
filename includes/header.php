@@ -48,6 +48,7 @@
         
         <a href="gallery.php" class="hover:text-orange-600 transition <?php echo basename($_SERVER['PHP_SELF']) == 'gallery.php' ? 'text-orange-600 font-semibold' : ''; ?>">गैलरी</a>
         <a href="photo-download-gallery.php" class="hover:text-orange-600 transition <?php echo basename($_SERVER['PHP_SELF']) == 'photo-download-gallery.php' ? 'text-orange-600 font-semibold' : ''; ?>">📸 डाउनलोड गैलरी</a>
+        <a href="banner-flex-photo.php" class="hover:text-orange-600 transition <?php echo basename($_SERVER['PHP_SELF']) == 'banner-flex-photo.php' ? 'text-orange-600 font-semibold' : ''; ?>">🖼️ बेनर फलेक्‍ स के लिये फोटो</a>
         <a href="contact.php" class="hover:text-orange-600 transition <?php echo basename($_SERVER['PHP_SELF']) == 'contact.php' ? 'text-orange-600 font-semibold' : ''; ?>">संपर्क</a>
       </nav>
       
@@ -77,6 +78,7 @@
         </div>
         <a href="gallery.php" class="block py-2 hover:text-orange-600">गैलरी</a>
         <a href="photo-download-gallery.php" class="block py-2 hover:text-orange-600">📸 डाउनलोड गैलरी</a>
+        <a href="banner-flex-photo.php" class="block py-2 hover:text-orange-600">🖼️ बेनर फलेक्‍ स के लिये फोटो</a>
         <a href="contact.php" class="block py-2 hover:text-orange-600">संपर्क</a>
       </nav>
     </div>
