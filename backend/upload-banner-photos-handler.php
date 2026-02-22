@@ -151,16 +151,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
        ------------------------- */
     $uploaded_count = 0;
     $failed_count   = 0;
+    log_debug("EVENT_ID: $event_id | FILES: " . (isset($_FILES['banner_photos']) ? json_encode($_FILES['banner_photos']['name']) : 'NONE'));
 
     if (!empty($_FILES['banner_photos']['name'][0])) {
+        log_debug("=== BANNER FILE UPLOAD START ===");
 
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp'];
         $total_files  = count($_FILES['banner_photos']['name']);
         $max_file_size = 10 * 1024 * 1024; // 10MB for banner photos
+        log_debug("Total banner files: $total_files | Max size: " . ($max_file_size / 1024 / 1024) . "MB");
 
         for ($i = 0; $i < $total_files; $i++) {
+            log_debug("Processing banner file $i");
 
             if ($_FILES['banner_photos']['error'][$i] !== UPLOAD_ERR_OK) {
+                log_debug("File $i upload error: " . $_FILES['banner_photos']['error'][$i]);
                 $failed_count++;
                 continue;
             }
@@ -169,6 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $file_tmp  = $_FILES['banner_photos']['tmp_name'][$i];
             $file_size = $_FILES['banner_photos']['size'][$i];
             $file_type = $_FILES['banner_photos']['type'][$i];
+            log_debug("File $i: name=$file_name | size=$file_size | type=$file_type");
 
             $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
 
@@ -214,6 +220,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 (event_id, filename, original_filename, file_path, file_size, mime_type, width, height, is_banner_photo)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)"
             );
+            log_debug("DB prepare done for file $i");
+
+            if (!$stmt) {
+                log_debug("DB prepare FAILED for file $i: " . $conn->error);
+                unlink($target_file);
+                $failed_count++;
+                continue;
+            }
 
             $stmt->bind_param(
                 "isssissi",
@@ -226,9 +240,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $width,
                 $height
             );
+            log_debug("DB bind_param done for file $i");
 
             if ($stmt->execute()) {
                 $photo_id = $stmt->insert_id;
+                log_debug("File $i inserted with photo_id=$photo_id");
                 $stmt->close();
 
                 // Also insert into banner_photo_uploads tracking table
@@ -238,19 +254,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     (photo_id, admin_id, description, dimensions_desc)
                     VALUES (?, ?, ?, ?)"
                 );
-                $stmt->bind_param("iiss", $photo_id, $admin_id, $description, $dimensions);
-                $stmt->execute();
-                $stmt->close();
-
-                $uploaded_count++;
-                log_debug("Successfully uploaded banner photo: $file_name (ID: $photo_id)");
+                log_debug("Preparing banner_photo_uploads insert for photo_id=$photo_id");
+                
+                if (!$stmt) {
+                    log_debug("Banner tracking insert FAILED: " . $conn->error);
+                } else {
+                    $stmt->bind_param("iiss", $photo_id, $admin_id, $description, $dimensions);
+                    if ($stmt->execute()) {
+                        log_debug("Banner tracking inserted successfully");
+                        $uploaded_count++;
+                    } else {
+                        log_debug("Banner tracking execute FAILED: " . $stmt->error);
+                    }
+                    $stmt->close();
+                }
             } else {
-                log_debug("Database insert failed: " . $stmt->error);
+                log_debug("Photo insert failed: " . $stmt->error);
                 unlink($target_file);
                 $failed_count++;
                 $stmt->close();
             }
         }
+        log_debug("=== BANNER FILE UPLOAD END | Uploaded: $uploaded_count | Failed: $failed_count ===");
     }
 
     /* -------------------------
