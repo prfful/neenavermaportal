@@ -37,16 +37,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* -------------------------
        SANITIZE INPUTS
        ------------------------- */
+    // Use defaults for banner photos if details not provided
     $event_name      = sanitize_input($_POST['banner_event_name'] ?? '');
     $event_date_raw  = sanitize_input($_POST['banner_event_date'] ?? '');
     $event_location  = sanitize_input($_POST['banner_event_location'] ?? '');
     $description     = sanitize_input($_POST['banner_description'] ?? '');
     $dimensions      = sanitize_input($_POST['banner_dimensions'] ?? 'High-Definition');
 
-    if (empty($event_name) || empty($event_date_raw)) {
-        $msg = 'कृपया सभी आवश्यक फ़ील्ड भरें';
-        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
-        exit;
+    // Use defaults if fields are empty
+    if (empty($event_name)) {
+        $event_name = 'बेनर फोटो - ' . date('Y-m-d H:i');
+    }
+    if (empty($event_date_raw)) {
+        $event_date_raw = date('Y-m-d');
+    }
+    if (empty($event_location)) {
+        $event_location = 'विभिन्न स्थान';
     }
 
     /* -------------------------
