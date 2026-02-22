@@ -272,6 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
         const uploadProgress = document.getElementById('uploadProgress');
         const progressBar = document.getElementById('progressBar');
         const progressText = document.getElementById('progressText');
+        const uploadError = document.getElementById('uploadError');
 
         if (uploadForm) {
             uploadForm.addEventListener('submit', (e) => {
@@ -299,7 +300,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
                             window.location.href = 'photo-admin-dashboard.php';
                         }, 500);
                     } else {
-                        alert('Upload failed. Please try again.');
+                        let message = 'Upload failed. Please try again.';
+                        try {
+                            const data = JSON.parse(xhr.responseText || '{}');
+                            if (data && data.message) {
+                                message = data.message;
+                            }
+                        } catch (err) {
+                            // Ignore JSON parse error and use default message.
+                        }
+                        if (uploadError) {
+                            uploadError.textContent = message;
+                            uploadError.classList.remove('hidden');
+                        } else {
+                            alert(message);
+                        }
                         uploadProgress.classList.add('hidden');
                     }
                 });

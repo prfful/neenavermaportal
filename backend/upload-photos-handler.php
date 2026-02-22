@@ -29,6 +29,24 @@ function log_debug($msg) {
     );
 }
 
+function is_ajax_request() {
+    $requested_with = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+    return strtolower($requested_with) === 'xmlhttprequest';
+}
+
+function respond_error($msg, $http_code = 500) {
+    log_debug("ERROR: " . $msg);
+    if (is_ajax_request()) {
+        http_response_code($http_code);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => $msg]);
+        exit;
+    }
+
+    header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
+    exit;
+}
+
 /* =========================
    POST REQUEST HANDLING
    ========================= */
@@ -44,9 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $description     = sanitize_input($_POST['description'] ?? '');
 
     if (empty($event_name) || empty($event_date_raw) || empty($program_type)) {
-        $msg = 'Please fill all required fields';
-        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
-        exit;
+        respond_error('Please fill all required fields', 400);
     }
 
     /* -------------------------
@@ -57,9 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $eventDateObj = new DateTime($event_date_raw);
     } catch (Exception $e) {
         log_debug("INVALID event_date received: " . $event_date_raw);
-        $msg = 'Invalid event date format';
-        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
-        exit;
+        respond_error('Invalid event date format', 400);
     }
 
     // Clone and add 5 days
@@ -88,9 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!file_exists($event_dir_fs)) {
         if (!mkdir($event_dir_fs, 0755, true)) {
-            $msg = 'Failed to create upload directory';
-            header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
-            exit;
+            respond_error('Failed to create upload directory');
         }
     }
 
@@ -102,6 +114,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         (event_name, event_date, program_type, event_location, description, delete_date, created_by)
         VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
+
+    if (!$stmt) {
+        respond_error('Database prepare failed: ' . $conn->error);
+    }
 
     $created_by = $_SESSION['photo_admin_username'];
     $stmt->bind_param(
@@ -116,9 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     if (!$stmt->execute()) {
-        $msg = 'Database error: ' . $stmt->error;
-        header('Location: /photo-admin-upload.php?error=' . urlencode($msg));
-        exit;
+        respond_error('Database error: ' . $stmt->error);
     }
 
     $event_id = $stmt->insert_id;
@@ -183,6 +197,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             );
 
+            if (!$stmt) {
+                unlink($target_file);
+                $failed_count++;
+                log_debug('DB prepare failed (photos): ' . $conn->error);
+                continue;
+            }
+
             $stmt->bind_param(
                 "isssisii",
                 $event_id,
@@ -200,6 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 unlink($target_file);
                 $failed_count++;
+                log_debug('DB insert failed (photos): ' . $stmt->error);
             }
 
             $stmt->close();
