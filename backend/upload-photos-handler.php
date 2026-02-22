@@ -64,6 +64,9 @@ function respond_error($msg, $http_code = 500) {
    POST REQUEST HANDLING
    ========================= */
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    log_debug("=== UPLOAD START ===");
+    log_debug("POST data: " . json_encode($_POST, JSON_UNESCAPED_UNICODE));
+    log_debug("FILES count: " . (isset($_FILES['photos']) ? count($_FILES['photos']['name']) : 0));
 
     /* -------------------------
        SANITIZE INPUTS
@@ -73,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $program_type    = sanitize_input($_POST['program_type'] ?? '');
     $event_location  = sanitize_input($_POST['event_location'] ?? '');
     $description     = sanitize_input($_POST['description'] ?? '');
+    log_debug("Sanitized: event_name=$event_name, event_date=$event_date_raw, program_type=$program_type");
 
     if (empty($event_name) || empty($event_date_raw) || empty($program_type)) {
         respond_error('Please fill all required fields', 400);
@@ -145,10 +149,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     );
 
     if (!$stmt->execute()) {
+        log_debug('DB execute failed (events): ' . $stmt->error);
         respond_error('Database error: ' . $stmt->error);
     }
 
     $event_id = $stmt->insert_id;
+    log_debug("Event inserted with ID: $event_id");
     $stmt->close();
 
     /* -------------------------
@@ -156,16 +162,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
        ------------------------- */
     $uploaded_count = 0;
     $failed_count   = 0;
+    log_debug("Starting file uploads for event_id=$event_id");
 
     if (!empty($_FILES['photos']['name'][0])) {
+        log_debug("Files detected: " . count($_FILES['photos']['name']));
 
         $allowed_exts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
         $total_files  = count($_FILES['photos']['name']);
+        log_debug("Total files to process: $total_files");
 
         for ($i = 0; $i < $total_files; $i++) {
+            log_debug("Processing file $i of $total_files");
 
             if ($_FILES['photos']['error'][$i] !== UPLOAD_ERR_OK) {
                 $failed_count++;
+                log_debug("File $i: Upload error code " . $_FILES['photos']['error'][$i]);
                 continue;
             }
 
@@ -244,21 +255,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     /* -------------------------
        ACTIVITY LOG
        ------------------------- */
+    log_debug("About to log_activity...");
     log_activity(
         $_SESSION['photo_admin_id'] ?? 0,
         'upload_photos',
         "Event: $event_name | Uploaded: $uploaded_count | Failed: $failed_count"
     );
+    log_debug("Activity logged successfully");
 
     /* -------------------------
        REDIRECT
        ------------------------- */
+    log_debug("Preparing redirect...");
     $msg = "✓ Event created successfully! Uploaded: $uploaded_count";
     if ($failed_count > 0) {
         $msg .= " | Failed: $failed_count";
     }
+    log_debug("Redirect message: $msg");
 
     header('Location: /photo-admin-dashboard.php?success=' . urlencode($msg));
+    log_debug("Redirect header sent");
     exit;
 
 }
