@@ -111,7 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">Upload Photos *</label>
                     <div class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-orange-500 transition">
-                        <input type="file" name="photos[]" id="photoInput" multiple accept="image/*" required
+                        <input type="file" name="photos[]" id="photoInput" multiple accept="image/*"
                                class="hidden" onchange="previewImages()">
                         <label for="photoInput" class="cursor-pointer">
                             <div class="text-6xl mb-4">📷</div>
@@ -173,7 +173,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">बेनर/फलेक्स फोटो अपलोड करें *</label>
                     <div class="border-2 border-dashed border-orange-300 rounded-lg p-8 text-center hover:border-orange-600 transition bg-orange-50">
-                        <input type="file" name="banner_photos[]" id="bannerPhotoInput" multiple accept="image/*" required
+                        <input type="file" name="banner_photos[]" id="bannerPhotoInput" multiple accept="image/*"
                                class="hidden" onchange="previewBannerImages()">
                         <label for="bannerPhotoInput" class="cursor-pointer">
                             <div class="text-6xl mb-4">🖼️</div>
@@ -233,6 +233,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
         if (uploadForm) {
             uploadForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                
+                // Validate that files are selected
+                const photoInput = document.getElementById('photoInput');
+                if (!photoInput.files || photoInput.files.length === 0) {
+                    alert('Please select at least one photo');
+                    return;
+                }
+                
                 uploadProgress.classList.remove('hidden');
                 progressBar.style.width = '0%';
                 progressText.textContent = '0%';
@@ -343,6 +351,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
         if (bannerUploadForm) {
             bannerUploadForm.addEventListener('submit', (e) => {
                 e.preventDefault();
+                
+                // Validate that files are selected
+                const bannerPhotoInput = document.getElementById('bannerPhotoInput');
+                if (!bannerPhotoInput.files || bannerPhotoInput.files.length === 0) {
+                    alert('कृपया कम से कम एक फोटो चुनें / Please select at least one photo');
+                    return;
+                }
+                
                 bannerUploadProgress.classList.remove('hidden');
                 bannerProgressBar.style.width = '0%';
                 bannerProgressText.textContent = '0%';
