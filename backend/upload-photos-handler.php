@@ -19,6 +19,7 @@ require_once $base_dir . '/includes/photo-gallery-db.php';
 
 $response = ['success' => false, 'message' => ''];
 $log_file = $base_dir . '/uploads/upload_debug.log';
+$fatal_log_file = $base_dir . '/uploads/php_fatal.log';
 
 function log_debug($msg) {
     global $log_file;
@@ -28,6 +29,18 @@ function log_debug($msg) {
         FILE_APPEND
     );
 }
+
+// Temporary: log PHP fatal errors to a dedicated file for troubleshooting.
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+register_shutdown_function(function () {
+    $error = error_get_last();
+    if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        $entry = "[" . date('Y-m-d H:i:s') . "] FATAL: "
+            . $error['message'] . " in " . $error['file'] . ":" . $error['line'] . PHP_EOL;
+        file_put_contents($GLOBALS['fatal_log_file'], $entry, FILE_APPEND);
+    }
+});
 
 function is_ajax_request() {
     $requested_with = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
