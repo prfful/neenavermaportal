@@ -169,50 +169,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['photos'])) {
 
             <form method="POST" action="backend/upload-banner-photos-handler.php" enctype="multipart/form-data" id="bannerUploadForm" class="space-y-6">
                 
-                <!-- Banner Event Details -->
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">कार्यक्रम/इवेंट का नाम *</label>
-                    <input type="text" name="banner_event_name" required 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                           placeholder="e.g., जन समारोह, शिक्षा कार्यक्रम">
-                </div>
-
-                <div class="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">कार्यक्रम की तारीख *</label>
-                        <input type="date" name="banner_event_date" required 
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-semibold mb-2">कार्यक्रम का स्थान</label>
-                        <input type="text" name="banner_event_location" 
-                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                               placeholder="e.g., धार, पीथमपुर">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">फोटो का विवरण</label>
-                    <textarea name="banner_description" rows="2" 
-                              class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                              placeholder="बेनर/फलेक्स के लिए इस फोटो के उपयोग के बारे में संक्षिप्त विवरण"></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 font-semibold mb-2">फोटो का आयाम/प्रकार</label>
-                    <select name="banner_dimensions" 
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500">
-                        <option value="">आयाम चुनें</option>
-                        <option value="Landscape - High Definition">लैंडस्केप - उच्च परिभाषा (HD)</option>
-                        <option value="Portrait - High Definition">पोर्ट्रेट - उच्च परिभाषा (HD)</option>
-                        <option value="Banner - Wide Format">बेनर - चौड़े प्रारूप</option>
-                        <option value="Flex - Full Size">फलेक्स - पूर्ण आकार</option>
-                        <option value="Social Media - HD">सोशल मीडिया - उच्च परिभाषा</option>
-                        <option value="Other - High Definition">अन्य - उच्च परिभाषा</option>
-                    </select>
-                </div>
-
                 <!-- Banner File Upload -->
                 <div>
                     <label class="block text-gray-700 font-semibold mb-2">बेनर/फलेक्स फोटो अपलोड करें *</label>
